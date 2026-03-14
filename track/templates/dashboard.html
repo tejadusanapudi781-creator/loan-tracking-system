@@ -1,0 +1,469 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Loan Dashboard</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-gray-100">
+
+    <div class="flex min-h-screen">
+
+        <!-- ================= SIDEBAR ================= -->
+        <aside class="w-64 bg-gray-900 text-white p-6">
+            <h2 class="text-2xl font-bold mb-8">Loan Tracker</h2>
+
+            <ul class="space-y-4 text-sm">
+                <li class="cursor-pointer hover:text-blue-400" onclick="openWeeklyModal()">📊 Weekly Graph</li>
+                <li class="cursor-pointer hover:text-blue-400"
+                    onclick="openPieModal({{ pending_count|default:0 }}, {{ completed_count|default:0 }}, {{ total_loan_sum|default:0 }}, {{ total_interest_sum|default:0 }})">
+                    🥧 Pie Charts
+                </li>
+                <li class="cursor-pointer hover:text-blue-400" onclick="openBorrowersModal()">👥 Borrowers</li>
+            </ul>
+        </aside>
+
+        <!-- ================= MAIN CONTENT ================= -->
+        <main class="flex-1 p-8">
+
+            <!-- ===== TOP CARDS ===== -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+
+                <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition">
+                    <h3 class="text-gray-500 uppercase text-sm">Total Loans</h3>
+                    <p class="text-3xl font-bold text-blue-600 mt-2">₹ {{ total_loans|default:0 }}</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition">
+                    <h3 class="text-gray-500 uppercase text-sm">Completed Loans</h3>
+                    <p class="text-3xl font-bold text-green-600 mt-2">{{ completed_loans|default:0 }}</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition">
+                    <h3 class="text-gray-500 uppercase text-sm">Total Interest</h3>
+                    <p class="text-3xl font-bold text-red-600 mt-2">₹ {{ total_interest|default:0 }}</p>
+                </div>
+
+            </div>
+
+            <!-- ===== ACTION BUTTONS ===== -->
+            <div class="flex flex-wrap gap-4 mb-10">
+
+                <button onclick="openBorrowerModal()"
+                    class="bg-blue-600 text-white px-6 py-3 rounded-lg shadow hover:bg-blue-700 transition">
+                    ➕ Add Borrower
+                </button>
+
+                <button onclick="openCollectionModal()"
+                    class="bg-green-600 text-white px-6 py-3 rounded-lg shadow hover:bg-green-700 transition">
+                    💰 Add Collection
+                </button>
+
+                <button onclick="openWeeklyModal()"
+                    class="bg-purple-600 text-white px-6 py-3 rounded-lg shadow hover:bg-purple-700 transition">
+                    📊 Weekly Graph
+                </button>
+
+                <button
+                    onclick="openPieModal({{ pending_count|default:0 }}, {{ completed_count|default:0 }}, {{ total_loan_sum|default:0 }}, {{ total_interest_sum|default:0 }})"
+                    class="bg-yellow-500 text-white px-6 py-3 rounded-lg shadow hover:bg-yellow-600 transition">
+                    🥧 Pie Charts
+                </button>
+
+            </div>
+<!-- ================= RECENT BORROWERS ================= -->
+<div class="mt-10">
+
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Recent Borrowers</h2>
+
+        <!-- ===== DASHBOARD SEARCH BAR ===== -->
+        <input
+            type="text"
+            id="borrowerSearch"
+            placeholder="Search Borrowers by Name"
+            class="w-full max-w-xl border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            onkeyup="searchDashboardBorrowers()"
+        >
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="dashboardBorrowers">
+        {% for loan in recent_loans %}
+        <div class="relative bg-white rounded-xl shadow overflow-hidden dashboard-card">
+
+            <!-- LEFT STATUS BAR -->
+            <div class="absolute left-0 top-0 h-full w-2 
+                {% if loan.status == 'COMPLETED' %}bg-green-500{% else %}bg-blue-500{% endif %}">
+            </div>
+
+            <div class="p-6 pl-8">
+                <!-- HEADER -->
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 borrower-name">
+                            {{ loan.borrower.name }}
+                        </h3>
+                        <p class="text-xs text-gray-500">Loan ID #{{ loan.id }}</p>
+                    </div>
+
+                    <!-- STATUS BADGE -->
+                    {% if loan.status == "COMPLETED" %}
+                        <span class="px-3 py-1 text-xs rounded-full bg-green-100 text-green-700 font-semibold">
+                            COMPLETED
+                        </span>   
+                    {% else %}
+                        <span class="px-3 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700 font-semibold">
+                            PENDING
+                        </span>
+                    {% endif %}
+                </div>
+
+                <!-- DETAILS GRID -->
+                <div class="mt-4 grid grid-cols-2 gap-4 text-sm text-gray-700">
+                    <div>
+                        <p class="text-gray-500">Loan Amount</p>
+                        <p class="font-semibold">₹ {{ loan.principal_amount }}</p>
+                    </div>
+
+                    <div>
+                        <p class="text-gray-500">Interest</p>
+                        <p class="font-semibold text-red-600">₹ {{ loan.interest_amount }}</p>
+                    </div>
+
+                    <div>
+                        <p class="text-gray-500">Collected</p>
+                        <p class="font-semibold text-green-600">₹ {{ loan.collected_amount }}</p>
+                    </div>
+
+                    <div>
+                        <p class="text-gray-500">Remaining</p>
+                        <p class="font-semibold text-blue-600">₹ {{ loan.remaining_amount }}</p>
+                    </div>
+
+                    <div>
+                        <p class="text-gray-500">Start Date</p>
+                        <p class="font-semibold">{{ loan.start_date }}</p>
+                    </div>
+
+                    <div>
+                        <p class="text-gray-500">End Date</p>
+                        <p class="font-semibold">{{ loan.end_date }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+            <p class="text-gray-500">No borrowers found</p>
+        {% endfor %}
+    </div>
+</div>
+
+    <!-- MODALS -->
+
+    <!-- Add Borrower -->
+    <div id="borrowerModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-6 rounded w-full max-w-md">
+            <h2 class="text-xl font-bold mb-4">Add Borrower</h2>
+            <form method="post" action="{% url 'add_borrower' %}">
+                {% csrf_token %}
+                <input name="name" placeholder="Borrower Name" class="w-full border p-2 mb-3" required>
+                <input name="phone" placeholder="Phone Number" class="w-full border p-2 mb-3" required>
+                <input name="loan_amount" type="number" placeholder="Loan Amount" class="w-full border p-2 mb-3"
+                    required>
+                <input name="start_date" type="date" class="w-full border p-2 mb-3" required>
+                <input name="end_date" type="date" class="w-full border p-2 mb-3" required>
+
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeBorrowerModal()"
+                        class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Collection -->
+    <div id="collectionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-6 rounded w-full max-w-md">
+            <h2 class="text-xl font-bold mb-4">Add Collection</h2>
+            <form method="post" action="{% url 'add_collection' %}">
+                {% csrf_token %}
+                <select name="loan_id" class="w-full border p-2 mb-3" required>
+                    <option value="">Select Borrower</option>
+                    {% for loan in loans %}
+                    <option value="{{ loan.id }}">{{ loan.borrower.name }} — ₹{{ loan.total_due }}</option>
+                    {% empty %}
+                    <option value="">No active borrowers</option>
+                    {% endfor %}
+                </select>
+
+                <input name="amount" type="number" placeholder="Collection Amount" class="w-full border p-2 mb-3"
+                    required>
+                <input name="collection_date" type="date" class="w-full border p-2 mb-3"
+                    value="{{ today|default:None }}" required>
+
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeCollectionModal()"
+                        class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+    <!-- Weekly Chart -->
+    <div id="weeklyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-6 rounded w-full max-w-lg">
+            <h2 class="text-xl font-bold mb-4">Weekly Collection (Last 4 Weeks)</h2>
+            <canvas id="weeklyChart"></canvas>
+            <div class="flex justify-end mt-4">
+                <button onclick="closeWeeklyModal()" class="px-4 py-2 bg-gray-300 rounded">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie Charts Horizontal -->
+    <div id="pieModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-6 rounded w-full max-w-4xl">
+            <h2 class="text-xl font-bold mb-6 text-center">Loan Status & Interest Overview</h2>
+
+            <div class="flex justify-center gap-10">
+
+                <!-- Loan Status -->
+                <div class="flex flex-col items-center">
+                    <div class="w-52 h-52">
+                        <canvas id="loanPieChart"></canvas>
+                    </div>
+                    <div id="loanPieLegend" class="mt-4 text-sm space-y-1"></div>
+                </div>
+
+                <!-- Interest -->
+                <div class="flex flex-col items-center">
+                    <div class="w-52 h-52">
+                        <canvas id="interestPieChart"></canvas>
+                    </div>
+                    <div id="interestPieLegend" class="mt-4 text-sm space-y-1"></div>
+                </div>
+
+            </div>
+
+            <div class="flex justify-end mt-6">
+                <button onclick="closePieModal()" class="px-4 py-2 bg-gray-300 rounded">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= BORROWERS MODAL ================= -->
+    <div id="borrowersModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center overflow-auto">
+        <div class="bg-white p-6 rounded w-full max-w-4xl">
+
+            <h2 class="text-2xl font-bold text-center mb-6">All Borrowers</h2>
+
+            <!-- FILTER BUTTONS -->
+            <div class="flex justify-center gap-4 mb-4">
+                <button onclick="filterBorrowersByStatus('all')"
+                    class="px-4 py-2 bg-gray-800 text-white rounded">All</button>
+                <button onclick="filterBorrowersByStatus('PENDING')"
+                    class="px-4 py-2 bg-yellow-500 text-white rounded">Pending</button>
+                <button onclick="filterBorrowersByStatus('COMPLETED')"
+                    class="px-4 py-2 bg-green-600 text-white rounded">Completed</button>
+            </div>
+
+            <!-- SEARCH BAR (DESIGN UNCHANGED) -->
+            <div class="mb-6">
+                <input type="text" id="modalBorrowerSearch" placeholder="Search Borrowers..."
+                    class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    onkeyup="searchModalBorrowers()">
+            </div>
+
+            <div class="space-y-4 max-h-[70vh] overflow-y-auto">
+
+                {% for loan in loans %}
+                <div class="borrower-card bg-white border-l-4
+                {% if loan.status == 'COMPLETED' %}border-green-500{% else %}border-yellow-500{% endif %}
+                rounded shadow p-4 flex flex-col md:flex-row justify-between" data-status="{{ loan.status }}">
+
+                    <!-- LEFT INFO -->
+                    <div>
+                        <p class="font-bold text-lg text-blue-600 modal-name">
+                            {{ loan.borrower.name }}
+                        </p>
+
+                        <div class="grid grid-cols-2 gap-2 text-sm text-gray-700 mt-2">
+                            <div>
+                                <p>Loan Amount</p>
+                                <p class="font-semibold">₹ {{ loan.principal_amount }}</p>
+                            </div>
+
+                            <div>
+                                <p>Interest Amount</p>
+                                <p class="font-semibold text-red-600">₹ {{ loan.interest_amount }}</p>
+                            </div>
+
+                            <div>
+                                <p>Collected Amount</p>
+                                <p class="font-semibold text-green-600">₹ {{ loan.collected_amount }}</p>
+                            </div>
+
+                            <div>
+                                <p>Remaining Amount</p>
+                                <p class="font-semibold text-blue-600">₹ {{ loan.remaining_amount }}</p>
+                            </div>
+
+                            <div>
+                                <p>Start Date</p>
+                                <p class="font-semibold">{{ loan.start_date }}</p>
+                            </div>
+
+                            <div>
+                                <p>End Date</p>
+                                <p class="font-semibold">{{ loan.end_date }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STATUS -->
+                    <div class="mt-4 md:mt-0 flex items-start">
+                        {% if loan.status == "COMPLETED" %}
+                        <span class="px-3 py-1 text-sm rounded-full bg-green-600 text-white">
+                            Completed
+                        </span>
+                        {% else %}
+                        <span class="px-3 py-1 text-sm rounded-full bg-yellow-500 text-white">
+                            Pending
+                        </span>
+                        {% endif %}
+                    </div>
+
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-center">No borrowers found</p>
+                {% endfor %}
+
+            </div>
+
+            <div class="flex justify-end mt-6">
+                <button onclick="closeBorrowersModal()" class="px-4 py-2 bg-gray-300 rounded">Close</button>
+            </div>
+        </div>
+    </div>   
+
+
+    <!-- MODAL JS -->
+    <script>
+        function toggleModal(id, show) {
+            const m = document.getElementById(id);
+            m.classList.toggle('hidden', !show);
+            m.classList.toggle('flex', show);
+        }
+
+        function openBorrowerModal() { toggleModal('borrowerModal', true); }
+        function closeBorrowerModal() { toggleModal('borrowerModal', false); }
+        function openCollectionModal() { toggleModal('collectionModal', true); }
+        function closeCollectionModal() { toggleModal('collectionModal', false); }
+        function openWeeklyModal() { toggleModal('weeklyModal', true); }
+        function closeWeeklyModal() { toggleModal('weeklyModal', false); }
+        function openBorrowersModal() { toggleModal('borrowersModal', true); }
+        function closeBorrowersModal() { toggleModal('borrowersModal', false); }
+        function filterBorrowers(status) {
+            document.querySelectorAll('.borrower-card').forEach(card => {
+                card.style.display =
+                    status === 'all' || card.dataset.status === status
+                        ? 'flex' : 'none';
+
+            });
+        }
+        /* Dashboard Search */
+        function searchDashboardBorrowers() {
+            const value = document.getElementById('borrowerSearch').value.toLowerCase();
+            document.querySelectorAll('.dashboard-card').forEach(card => {
+                const name = card.querySelector('.borrower-name').innerText.toLowerCase();
+                card.style.display = name.includes(value) ? 'block' : 'none';
+            });
+        }
+
+        /* Modal Filter */
+        function filterBorrowersByStatus(status) {
+            document.querySelectorAll('.borrower-card').forEach(card => {
+                card.style.display = (status === 'all' || card.dataset.status === status) ? 'flex' : 'none';
+            });
+        }
+
+        /* Modal Search */
+        function searchModalBorrowers() {
+            const value = document.getElementById('modalBorrowerSearch').value.toLowerCase();
+            document.querySelectorAll('.borrower-card').forEach(card => {
+                const name = card.querySelector('.modal-name').innerText.toLowerCase();
+                card.style.display = name.includes(value) ? 'flex' : 'none';
+            });
+        }
+        // Pie Charts
+        let loanPieChart, interestPieChart;
+        function openPieModal(activeLoans, completedLoans, principalAmount, interestAmount) {
+            toggleModal('pieModal', true);
+
+            activeLoans = Number(activeLoans) || 0;
+            completedLoans = Number(completedLoans) || 0;
+            principalAmount = Number(principalAmount) || 0;
+            interestAmount = Number(interestAmount) || 0;
+
+            if (loanPieChart) loanPieChart.destroy();
+            if (interestPieChart) interestPieChart.destroy();
+
+            loanPieChart = new Chart(document.getElementById("loanPieChart"), {
+                type: "pie",
+                data: { labels: ["Active Loans", "Completed Loans"], datasets: [{ data: [activeLoans, completedLoans], backgroundColor: ["#3B82F6", "#22C55E"] }] }
+            });
+
+            interestPieChart = new Chart(document.getElementById("interestPieChart"), {
+                type: "pie",
+                data: { labels: ["Principal Amount", "Interest Amount"], datasets: [{ data: [principalAmount, interestAmount], backgroundColor: ["#FACC15", "#EF4444"] }] }
+            });
+
+            generateLegend("loanPieLegend", ["Active Loans", "Completed Loans"], [activeLoans, completedLoans], ["#3B82F6", "#22C55E"], false);
+            generateLegend("interestPieLegend", ["Principal Amount", "Interest Amount"], [principalAmount, interestAmount], ["#FACC15", "#EF4444"], true);
+        }
+        function generateLegend(containerId, labels, values, colors, isCurrency) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = "";
+            labels.forEach((label, i) => {
+                const value = isCurrency ? `₹ ${values[i]}` : values[i];
+                container.innerHTML += `<div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full" style="background:${colors[i]}"></span>
+            <span>${label}: <b>${value}</b></span>
+        </div>`;
+            });
+        }
+
+        function closePieModal() { toggleModal('pieModal', false); }
+    </script>
+
+    <!-- WEEKLY BAR CHART -->
+    <script>
+        const weekLabels = {{ week_labels_json| safe }};
+        const weekTotals = {{ week_totals_json| safe }};
+
+        new Chart(document.getElementById('weeklyChart'), {
+            type: 'bar',
+            data: { labels: weekLabels, datasets: [{ label: 'Collection Amount', data: weekTotals, backgroundColor: 'rgba(54,162,235,0.6)' }] },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+    </script>
+
+
+</body>
+
+</html>
+
+</main>
